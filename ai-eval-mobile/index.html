@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3880ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>AI Eval Pipeline</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+    .app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #fff; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+    .header { background: #3880ff; color: white; padding: 16px; text-align: center; }
+    .header h1 { font-size: 18px; }
+    .tab-bar { display: flex; background: #fff; border-top: 1px solid #eee; position: sticky; bottom: 0; }
+    .tab { flex: 1; padding: 12px 8px; text-align: center; cursor: pointer; border: none; background: none; color: #666; font-size: 12px; }
+    .tab.active { color: #3880ff; }
+    .content { padding: 16px; min-height: calc(100vh - 120px); }
+    .status { padding: 8px; border-radius: 20px; font-weight: bold; text-align: center; margin-bottom: 16px; display: block; }
+    .connected { background: #d4edda; color: #155724; }
+    .disconnected { background: #f8d7da; color: #721c24; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+    .model-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { background: #e9ecef; padding: 6px 12px; border-radius: 16px; font-size: 13px; }
+    .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin: 8px 0; }
+    .btn-primary { background: #3880ff; color: white; }
+    .btn-secondary { background: #f4f5f8; color: #666; }
+    .btn:disabled { opacity: 0.5; }
+    select, input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin: 8px 0; }
+    .progress { height: 8px; background: #eee; border-radius: 4px; margin: 12px 0; overflow: hidden; }
+    .progress-fill { height: 100%; background: #3880ff; transition: width 0.3s; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f8f9fa; font-weight: 600; }
+    .winner { background: linear-gradient(135deg, #d4edda, #c3e6cb); border-radius: 12px; padding: 20px; text-align: center; }
+    .winner h3 { color: #155724; }
+    .section-title { font-size: 14px; color: #666; margin: 16px 0 8px; text-transform: uppercase; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; }
+    .badge-success { background: #d4edda; color: #155724; }
+    .badge-primary { background: #cce5ff; color: #004085; }
+    .toggle-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; cursor: pointer; }
+    .empty { text-align: center; padding: 40px; color: #999; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header"><h1>🤖 AI Eval Pipeline</h1></div>
+    <div id="app" class="content"></div>
+    <div class="tab-bar">
+      <button class="tab active" data-tab="home" onclick="switchTab('home')">🏠<br>Home</button>
+      <button class="tab" data-tab="evaluate" onclick="switchTab('evaluate')">🚀<br>Eval</button>
+      <button class="tab" data-tab="results" onclick="switchTab('results')">📊<br>Results</button>
+      <button class="tab" data-tab="settings" onclick="switchTab('settings')">⚙️<br>Settings</button>
+    </div>
+  </div>
+  <script>
+    const API_BASE = localStorage.getItem('api_url') || 'http://localhost:12000';
+    let state = { tab: 'home', info: null, datasets: [], runs: [], selectedModels: [], status: null, summary: null };
+    try { state.selectedModels = JSON.parse(localStorage.getItem('selected_models') || '[]'); } catch(e) {}
+
+    async function api(path, opts = {}) {
+      const r = await fetch(API_BASE + path, opts);
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    async function loadData() {
+      try {
+        state.info = await api('/info');
+        state.datasets = await api('/datasets');
+        state.runs = (await api('/evaluations')).runs || [];
+        if (!state.selectedModels.length && state.info?.available_models) {
+          state.selectedModels = state.info.available_models.map(m => m.name);
+          localStorage.setItem('selected_models', JSON.stringify(state.selectedModels));
+        }
+      } catch(e) { state.info = null; }
+    }
+
+    async function startEval() {
+      const ds = document.getElementById('ds').value;
+      if (!ds || !state.selectedModels.length) return alert('Select dataset and models');
+      try {
+        const r = await api('/evaluations', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({dataset_name: ds, models: state.selectedModels}) });
+        state.currentRunId = r.run_id;
+        pollStatus();
+      } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function pollStatus() {
+      if (!state.currentRunId) return;
+      try {
+        state.status = await api('/evaluations/' + state.currentRunId + '/status');
+        render();
+        if (state.status.status === 'running') setTimeout(pollStatus, 3000);
+      } catch(e) {}
+    }
+
+    async function loadSummary(id) {
+      try { state.summary = await api('/evaluations/' + id + '/summary'); render(); } catch(e) {}
+    }
+
+    function switchTab(tab) { state.tab = tab; render(); if (tab === 'results' && state.runs.length) { const c = state.runs.filter(r => r.status === 'completed'); if (c.length) loadSummary(c[0].id); } }
+
+    function toggleModel(name) {
+      const i = state.selectedModels.indexOf(name);
+      if (i >= 0) state.selectedModels.splice(i, 1); else state.selectedModels.push(name);
+      localStorage.setItem('selected_models', JSON.stringify(state.selectedModels));
+      render();
+    }
+
+    function render() {
+      document.getElementById('app').innerHTML = eval('render' + state.tab.charAt(0).toUpperCase() + state.tab.slice(1))();
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === state.tab));
+    }
+
+    function renderHome() {
+      if (!state.info) return '<div class="status disconnected">🔴 API Disconnected</div><div class="empty"><p>Configure API URL in Settings</p></div>';
+      const ms = state.info.available_models || [];
+      return '<div class="status connected">🟢 Connected</div><h2 style="text-align:center;margin:16px 0;">' + state.info.service + '</h2><div class="card"><div class="card-title">Available Models</div><div class="model-grid">' + ms.map(m => '<span class="chip">' + m.display_name + '</span>').join('') + '</div><p style="margin-top:12px;color:#666;">' + ms.length + ' models</p></div><button class="btn btn-secondary" onclick="switchTab(\'evaluate\')">⚙️ ' + state.selectedModels.length + ' Models Selected</button><button class="btn btn-primary" onclick="switchTab(\'evaluate\')">🚀 Start Evaluation</button><button class="btn btn-secondary" onclick="switchTab(\'results\')">📊 View Results</button>';
+    }
+
+    function renderEvaluate() {
+      let html = '<div class="card"><div class="card-title">🚀 Run Evaluation</div><label class="section-title">Dataset</label><select id="ds">' + state.datasets.map(d => '<option value="' + d.name + '">' + d.name + ' (' + d.item_count + ')</option>').join('') + '</select><button class="btn btn-secondary" onclick="state.tab=\'models\';render()">⚙️ ' + state.selectedModels.length + ' Models</button><button class="btn btn-primary" onclick="startEval()">🚀 Start</button></div>';
+      if (state.status) {
+        html += '<div class="card"><div class="card-title">Status</div><span class="badge ' + (state.status.status === 'completed' ? 'badge-success' : 'badge-primary') + '">' + state.status.status + '</span><div class="progress"><div class="progress-fill" style="width:' + (state.status.progress || 0) + '%"></div></div><p>Progress: ' + (state.status.progress || 0).toFixed(1) + '% | Success: ' + (state.status.successful || 0) + ' | Failed: ' + (state.status.failed || 0) + '</p>' + (state.status.status === 'completed' ? '<button class="btn btn-primary" onclick="switchTab(\'results\')">View Results →</button>' : '') + '</div>';
+      }
+      return html;
+    }
+
+    function renderModels() {
+      const ms = state.info?.available_models || [];
+      let html = '<button class="btn btn-secondary" onclick="switchTab(\'home\')">← Back</button><div class="card"><div class="card-title">Select Models</div>';
+      const grouped = {};
+      ms.forEach(m => { grouped[m.provider] = grouped[m.provider] || []; grouped[m.provider].push(m); });
+      Object.entries(grouped).forEach(([p, models]) => {
+        html += '<p class="section-title">' + p.toUpperCase() + '</p>';
+        models.forEach(m => html += '<div class="toggle-item" onclick="toggleModel(\'' + m.name + '\')"><span>' + m.display_name + '</span><span class="badge ' + (state.selectedModels.includes(m.name) ? 'badge-success' : '') + '">' + (state.selectedModels.includes(m.name) ? '✓' : '○') + '</span></div>');
+      });
+      return html + '<p style="margin-top:16px;text-align:center;color:#666;">' + state.selectedModels.length + ' selected</p></div>';
+    }
+
+    function renderResults() {
+      const completed = state.runs.filter(r => r.status === 'completed');
+      if (!completed.length) return '<div class="empty"><p>No completed evaluations</p><button class="btn btn-primary" onclick="switchTab(\'evaluate\')">Start Evaluation</button></div>';
+      let html = '<div class="card"><div class="card-title">Select Run</div><select onchange="loadSummary(this.value)">' + completed.map(r => '<option value="' + r.id + '">' + (r.name || r.id.slice(0,8)) + '</option>').join('') + '</select></div>';
+      if (state.summary?.models) {
+        html += '<div class="card"><div class="card-title">📊 Comparison</div><table><thead><tr><th>Model</th><th>Accuracy</th><th>Latency</th></tr></thead><tbody>';
+        Object.entries(state.summary.models).forEach(([n, d]) => html += '<tr><td>' + n + '</td><td>' + (d.metrics.accuracy?.mean || 0).toFixed(3) + '</td><td>' + (d.metrics.latency_ms?.mean || 0).toFixed(0) + 'ms</td></tr>');
+        html += '</tbody></table></div>';
+        const w = Object.entries(state.summary.models).sort((a,b) => (b[1].metrics.composite_score?.mean||0) - (a[1].metrics.composite_score?.mean||0))[0];
+        html += '<div class="card winner"><h3>🥇 ' + w[0] + '</h3><p>Score: ' + (w[1].metrics.composite_score?.mean||0).toFixed(3) + '</p><p>Accuracy: ' + (w[1].metrics.accuracy?.mean||0).toFixed(3) + '</p></div>';
+      }
+      return html;
+    }
+
+    function renderSettings() {
+      return '<div class="card"><div class="card-title">API Connection</div><input type="text" id="api-url" value="' + (localStorage.getItem('api_url') || API_BASE) + '" placeholder="API URL"></div><div class="card"><div class="card-title">API Keys</div><input type="password" id="openai-key" value="' + (localStorage.getItem('openai_key') || '') + '" placeholder="OpenAI Key"><input type="password" id="anthropic-key" value="' + (localStorage.getItem('anthropic_key') || '') + '" placeholder="Anthropic Key"><input type="password" id="groq-key" value="' + (localStorage.getItem('groq_key') || '') + '" placeholder="Groq Key"><button class="btn btn-primary" onclick="saveSettings()">Save</button></div><div class="card"><div class="card-title">About</div><p><strong>AI Evaluation Pipeline</strong></p><p style="color:#666;margin-top:8px;">v1.0.0</p></div>';
+    }
+
+    function saveSettings() {
+      ['api_url', 'openai_key', 'anthropic_key', 'groq_key'].forEach(k => {
+        const el = document.getElementById(k.replace('_', '-'));
+        if (el) localStorage.setItem(k, el.value);
+      });
+      location.reload();
+    }
+
+    loadData().then(render);
+  </script>
+</body>
+</html>

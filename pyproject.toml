@@ -1,0 +1,114 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-evaluation-pipeline"
+version = "1.0.0"
+description = "A robust, production-ready system for benchmarking multiple LLMs using automated quality metrics"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "AI Infrastructure Team"}
+]
+keywords = ["llm", "evaluation", "benchmarking", "ai", "mlops"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "aiofiles>=23.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0",
+    "openai>=1.0.0",
+    "anthropic>=0.20.0",
+    "groq>=0.4.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "sqlalchemy>=2.0.0",
+    "aiosqlite>=0.19.0",
+    "sentence-transformers>=2.2.0",
+    "scikit-learn>=1.3.0",
+    "torch>=2.0.0",
+    "rouge-score>=0.1.0",
+    "nltk>=3.8.0",
+    "streamlit>=1.28.0",
+    "plotly>=5.18.0",
+    "tenacity>=8.2.0",
+    "python-dotenv>=1.0.0",
+    "tqdm>=4.66.0",
+    "httpx>=0.25.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "mypy>=1.7.0",
+    "isort>=5.12.0",
+]
+dashboard = [
+    "streamlit>=1.28.0",
+    "plotly>=5.18.0",
+]
+
+[project.scripts]
+ai-eval = "src.main:main"
+ai-eval-dashboard = "src.dashboard.app:main"
+
+[project.urls]
+Homepage = "https://github.com/your-org/ai-evaluation-pipeline"
+Documentation = "https://github.com/your-org/ai-evaluation-pipeline#readme"
+Repository = "https://github.com/your-org/ai-evaluation-pipeline"
+Issues = "https://github.com/your-org/ai-evaluation-pipeline/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

@@ -1,0 +1,69 @@
+# AI Evaluation Pipeline - Kubernetes Deployment Manifests
+# For production Kubernetes deployments
+
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-evaluation
+  labels:
+    app: ai-evaluation
+    environment: production
+
+---
+# ConfigMap for non-sensitive configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-eval-config
+  namespace: ai-evaluation
+data:
+  LOG_LEVEL: "INFO"
+  MAX_CONCURRENT_REQUESTS: "10"
+  REQUEST_TIMEOUT: "120"
+  ENABLE_CACHING: "true"
+  EVALUATOR_MODEL: "gpt-4o-mini"
+  EMBEDDING_MODEL: "all-MiniLM-L6-v2"
+
+---
+# Secret for sensitive configuration (use external secrets in production)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ai-eval-secrets
+  namespace: ai-evaluation
+type: Opaque
+stringData:
+  OPENAI_API_KEY: "REPLACE_WITH_YOUR_KEY"
+  ANTHROPIC_API_KEY: "REPLACE_WITH_YOUR_KEY"
+  GROQ_API_KEY: "REPLACE_WITH_YOUR_KEY"
+  # Database credentials
+  POSTGRES_USER: "ai_eval"
+  POSTGRES_PASSWORD: "REPLACE_WITH_SECURE_PASSWORD"
+  POSTGRES_DB: "evaluation"
+  # Security
+  SECRET_KEY: "REPLACE_WITH_32_CHAR_SECRET"
+
+---
+# Persistent Volume Claim for data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-eval-data
+  namespace: ai-evaluation
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-eval-service-account
+  namespace: ai-evaluation

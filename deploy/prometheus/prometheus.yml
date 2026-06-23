@@ -1,0 +1,81 @@
+# Prometheus Configuration for AI Evaluation Pipeline
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'ai-evaluation'
+    environment: 'production'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files: []
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # AI Evaluation API metrics
+  - job_name: 'ai-eval-api'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - ai-evaluation
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+  # Nginx metrics (if nginx exporter is running)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:9113']
+    scrape_interval: 30s
+
+  # PostgreSQL metrics (if postgres exporter is running)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+
+  # Node exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+# Remote write configuration (for long-term storage)
+remote_write:
+  - url: https://your-remote-storage-endpoint/api/v1/write
+    bearer_token: YOUR_REMOTE_WRITE_TOKEN
+    tls_config:
+      insecure_skip_verify: false
+    queue_config:
+      capacity: 10000
+      max_shards: 5
+      min_shards: 1
+      max_samples_per_send: 2000
+      batch_send_deadline: 30s
