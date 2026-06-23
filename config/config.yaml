@@ -1,0 +1,116 @@
+# AI Evaluation Pipeline Configuration
+
+# Model Providers Configuration
+models:
+  openai:
+    provider: "openai"
+    models:
+      - name: "gpt-4o"
+        display_name: "GPT-4o"
+        max_tokens: 4096
+        temperature: 0.7
+        pricing:
+          input_cost_per_1k: 0.005
+          output_cost_per_1k: 0.015
+      - name: "gpt-4o-mini"
+        display_name: "GPT-4o Mini"
+        max_tokens: 4096
+        temperature: 0.7
+        pricing:
+          input_cost_per_1k: 0.00015
+          output_cost_per_1k: 0.0006
+      - name: "gpt-4-turbo"
+        display_name: "GPT-4 Turbo"
+        max_tokens: 4096
+        temperature: 0.7
+        pricing:
+          input_cost_per_1k: 0.01
+          output_cost_per_1k: 0.03
+
+  anthropic:
+    provider: "anthropic"
+    models:
+      - name: "claude-3-5-sonnet-20240620"
+        display_name: "Claude 3.5 Sonnet"
+        max_tokens: 4096
+        temperature: 0.7
+        pricing:
+          input_cost_per_1k: 0.003
+          output_cost_per_1k: 0.015
+      - name: "claude-3-opus-20240229"
+        display_name: "Claude 3 Opus"
+        max_tokens: 4096
+        temperature: 0.7
+        pricing:
+          input_cost_per_1k: 0.015
+          output_cost_per_1k: 0.075
+      - name: "claude-3-haiku-20240307"
+        display_name: "Claude 3 Haiku"
+        max_tokens: 4096
+        temperature: 0.7
+        pricing:
+          input_cost_per_1k: 0.00025
+          output_cost_per_1k: 0.00125
+
+  groq:
+    provider: "groq"
+    models:
+      - name: "llama-3.1-70b-versatile"
+        display_name: "Llama 3.1 70B"
+        max_tokens: 4096
+        temperature: 0.7
+        pricing:
+          input_cost_per_1k: 0.0007
+          output_cost_per_1k: 0.0008
+      - name: "llama-3.1-8b-instant"
+        display_name: "Llama 3.1 8B"
+        max_tokens: 4096
+        temperature: 0.7
+        pricing:
+          input_cost_per_1k: 0.00005
+          output_cost_per_1k: 0.00008
+
+# Evaluation Configuration
+evaluation:
+  # Concurrency settings
+  max_concurrent_requests: 5
+  batch_size: 10
+  
+  # Retry settings
+  max_retries: 3
+  retry_base_delay: 1.0
+  retry_max_delay: 60.0
+  retry_multiplier: 2.0
+  
+  # Timeout settings (seconds)
+  request_timeout: 60
+  
+  # Metrics weights for composite score
+  metric_weights:
+    accuracy: 0.30
+    faithfulness: 0.25
+    hallucination: 0.25
+    latency: 0.10
+    cost: 0.10
+
+# Storage Configuration
+storage:
+  database:
+    type: "sqlite"
+    path: "data/evaluation_results.db"
+  
+  results_export:
+    formats: ["csv", "json"]
+    directory: "data/results"
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/evaluation.log"
+
+# Dashboard Configuration
+dashboard:
+  host: "0.0.0.0"
+  port: 8501
+  theme: "light"
