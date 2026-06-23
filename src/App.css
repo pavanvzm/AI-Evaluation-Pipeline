@@ -1,0 +1,44 @@
+* { box-sizing: border-box; }
+
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+.page-content { padding: 16px; }
+
+.status-badge { padding: 8px 16px; border-radius: 20px; font-weight: bold; text-align: center; margin-bottom: 16px; }
+.status-badge.connected { background: #d4edda; color: #155724; }
+.status-badge.disconnected { background: #f8d7da; color: #721c24; }
+
+h2 { text-align: center; margin: 16px 0; }
+
+.model-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.model-chip { background: #e9ecef; padding: 6px 12px; border-radius: 16px; font-size: 14px; }
+
+.action-btn { margin: 8px 0; }
+
+.selected-count { text-align: center; color: #666; margin: 16px 0; }
+
+.empty-state { text-align: center; padding: 40px; color: #666; }
+.empty-state .hint { font-size: 14px; color: #999; margin-top: 8px; }
+
+.native-select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background: #fff; }
+
+.start-btn { margin-top: 16px; }
+
+ion-progress-bar { margin: 12px 0; }
+
+.results-table { width: 100%; border-collapse: collapse; }
+.results-table th, .results-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+.results-table th { background: #f8f9fa; font-weight: 600; }
+.results-table td { font-family: monospace; }
+
+.winner-card { text-align: center; padding: 16px; background: linear-gradient(135deg, #d4edda, #c3e6cb); border-radius: 12px; }
+.winner-card h3 { margin: 0 0 8px; color: #155724; }
+
+ion-tab-bar { --background: #fff; }
+ion-tab-button { --color: #999; --color-selected: #3880ff; }
+
+ion-card { margin: 12px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+ion-card-header { padding-bottom: 8px; }
+ion-card-content { padding-top: 8px; }
+
+ion-button { margin: 8px 0; }

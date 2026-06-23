@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AI Eval</string>
+    <string name="title_activity_main">AI Eval</string>
+    <string name="package_name">com.aieval.app</string>
+    <string name="custom_url_scheme">com.aieval.app</string>
+</resources>
